@@ -28,20 +28,41 @@ function kmlToSvg(kmlFilePath, svgFilePath) {
     svgContent += '</svg>';
     
     fs.writeFileSync(svgFilePath, svgContent, 'utf8');
+
+    // convert back with values to check if it is correct parsing svgContent
+    const svgData = fs.readFileSync(svgFilePath, 'utf8');
+    const doc2 = new DOMParser().parseFromString(svgContent, 'text/xml');
+    const paths = doc2.getElementsByTagName('polyline');
+    console.log("paths: ", paths);
+    for (let i = 0; i < paths.length; i++) {
+        let points = paths[i].getAttribute('points').split(' ').map(coord => {
+            let [x, y] = coord.split(',').map(Number);
+            console.log("x: ", (width - x) / width, "y: ", y);
+            let lat = maxLat - (y / height) * diffLat;
+            let lng = maxLng - ((width - x) / width) * diffLng;
+            return `${lng},${lat}`;
+        }).join(' ');
+    }
+    
+
 }
 
 function svgToKml(svgFilePath, kmlFilePath) {
     const svgData = fs.readFileSync(svgFilePath, 'utf8');
     const doc = new DOMParser().parseFromString(svgData, 'text/xml');
-    const polylines = doc.getElementsByTagName('polyline');
+    const paths = doc.getElementsByTagName('path');
     
     let kmlContent = '<?xml version="1.0" encoding="UTF-8"?>\n';
     kmlContent += '<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n';
     
-    for (let i = 0; i < polylines.length; i++) {
-        let points = polylines[i].getAttribute('points').trim().split(' ').map(coord => {
-            let [x, y] = coord.split(',').map(Number);
-            return `${x / 10},${y / -10},0`;
+    for (let i = 0; i < paths.length; i++) {
+        let points = paths[i].getAttribute('d').replace('M', '').trim().split('L').map(coord => {
+
+            let [x, y] = coord.split(' ').map(Number);
+            console.log("x: ", (width - x) / width, "y: ", y);
+            let lat = maxLat - (y / height) * diffLat;
+            let lng = maxLng - ((width - x) / width) * diffLng;
+            return `${lng},${lat}`;
         }).join(' ');
         
         kmlContent += '<Placemark>\n<LineString>\n<coordinates>' + points + '</coordinates>\n</LineString>\n</Placemark>\n';
@@ -52,7 +73,7 @@ function svgToKml(svgFilePath, kmlFilePath) {
 }
 
 // Example usage:
-kmlToSvg('barreiras.kml', 'barreiras.svg');
+//kmlToSvg('barreiras.kml', 'barreiras.svg');
+// kmlToSvg('escritas.kml', 'rios.svg');
 // kmlToSvg('rios.kml', 'rios.svg');
-// kmlToSvg('rios.kml', 'rios.svg');
-// svgToKml('output.svg', 'converted.kml');
+svgToKml('output 3.svg', 'converted3.kml');
